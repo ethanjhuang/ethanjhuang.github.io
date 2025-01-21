@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Form Submission</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f9f9f9;
+        }
+
+        .form-container {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+            width: 100%;
+        }
+
+        .form-container h2 {
+            margin-bottom: 20px;
+            font-size: 24px;
+            color: #333;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        .form-group input, .form-group select, .form-group button {
+            width: 100%;
+            padding: 10px;
+            font-size: 14px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            outline: none;
+        }
+
+        .form-group button {
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .form-group button:hover {
+            background-color: #45a049;
+        }
+
+        .form-group input[type="date"] {
+            font-family: inherit;
+        }
+
+        .debug-output {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 12px;
+            color: #333;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h2>入班時數</h2>
+        <form id="submissionForm">
+            <div class="form-group">
+                <label for="name">姓名</label>
+                <input type="text" id="name" name="name" required>
+            </div>
+            <div class="form-group">
+                <label for="responsibility">負責事項</label>
+                <select id="responsibility" name="responsibility" required>
+                    <option value="主講">主講</option>
+                    <option value="課程協助">課程協助</option>
+                    <option value="道具製作">道具製作</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="serviceDate">服務日期</label>
+                <input type="date" id="serviceDate" name="serviceDate" value="" required>
+            </div>
+            <div class="form-group">
+                <label for="grade">年級</label>
+                <input type="number" id="grade" name="grade" min="1" max="6" required>
+            </div>
+            <div class="form-group">
+                <label for="class">班級</label>
+                <input type="text" id="class" name="class" required>
+            </div>
+            <div class="form-group">
+                <label for="lessonContent">教案內容</label>
+                <select id="lessonContent" name="lessonContent" required>
+                    <option value="一上">一上</option>
+                    <option value="一下">一下</option>
+                    <option value="二上">二上</option>
+                    <option value="二下">二下</option>
+                    <option value="三上">三上</option>
+                    <option value="三下">三下</option>
+                    <option value="四上">四上</option>
+                    <option value="四下">四下</option>
+                    <option value="五上">五上</option>
+                    <option value="五下">五下</option>
+                    <option value="六上">六上</option>
+                    <option value="六下">六下</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="unit">單元</label>
+                <input type="number" id="unit" name="unit" min="1" max="6" required>
+            </div>
+            <div class="form-group">
+                <label for="session">入班時段</label>
+                <select id="session" name="session" required>
+                    <option value="早自習">早自習</option>
+                    <option value="第一節">第一節</option>
+                    <option value="第二節">第二節</option>
+                    <option value="第三節">第三節</option>
+                    <option value="第四節">第四節</option>
+                    <option value="第五節">第五節</option>
+                    <option value="第六節">第六節</option>
+                    <option value="第七節">第七節</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <button type="submit">提交</button>
+            </div>
+        </form>
+        <div class="debug-output" id="debugOutput"></div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('serviceDate').value = today;
+        });
+
+        document.getElementById('submissionForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = {};
+            formData.forEach((value, key) => data[key] = value);
+
+            const debugOutput = document.getElementById('debugOutput');
+            debugOutput.innerHTML = `<strong>Submitting Data:</strong> <pre>${JSON.stringify(data, null, 2)}</pre>`;
+
+            fetch('https://script.google.com/macros/s/AKfycbwpqCm7xkQnVWRh4SBETxkRo6YNpTvDB0dud3Y6d658/dev', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+})
+.then(response => {
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return response.json();
+})
+.then(result => {
+    debugOutput.innerHTML += `<strong>Response:</strong> <pre>${JSON.stringify(result, null, 2)}</pre>`;
+    alert('表單提交成功！');
+    e.target.reset();
+})
+.catch(error => {
+    debugOutput.innerHTML += `<strong>Error:</strong> <pre>${error.message}</pre>`;
+    console.error('表單提交失敗:', error);
+    alert('表單提交失敗，請稍後再試！');
+});
+
+        });
+    </script>
+</body>
+</html>
