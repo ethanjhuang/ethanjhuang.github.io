@@ -3,1007 +3,1053 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>志工排班系統</title>
+    <title>國小課表系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;600;700&display=swap');
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background: linear-gradient(45deg, #ff9a9e 0%, #fecfef 25%, #fecfef 75%, #ffc3a0 100%);
         }
-
-        @media (max-width: 768px) {
-            .schedule-table {
-                font-size: 0.8em;
-            }
-            
-            .schedule-table th,
-            .schedule-table td {
-                padding: 8px 5px;
-            }
-            
-            .legend {
-                flex-direction: column;
-                align-items: center;
-            }
-            
-            .mode-switcher {
-                flex-direction: column;
-                align-items: center;
-            }
-
-            .form-group {
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            .form-group input {
-                max-width: none;
-            }
+        
+        .pop-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 8px 8px 0px #ff6b6b, 12px 12px 0px #4ecdc4;
+            border: 4px solid #2c3e50;
+        }
+        
+        .pop-button {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            box-shadow: 4px 4px 0px #c44569;
+            border: 3px solid #2c3e50;
+            transition: all 0.2s ease;
+        }
+        
+        .pop-button:hover {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0px #c44569;
+        }
+        
+        .pop-button:active {
+            transform: translate(4px, 4px);
+            box-shadow: 0px 0px 0px #c44569;
+        }
+        
+        .pop-input {
+            border: 4px solid #2c3e50;
+            box-shadow: 4px 4px 0px #feca57;
+            background: #fff;
+        }
+        
+        .pop-select {
+            border: 3px solid #2c3e50;
+            box-shadow: 3px 3px 0px #48dbfb;
+            background: #fff;
+        }
+        
+        .tab-button {
+            background: linear-gradient(135deg, #feca57 0%, #ff9ff3 100%);
+            border: 3px solid #2c3e50;
+            box-shadow: 3px 3px 0px #ff6b6b;
+        }
+        
+        .tab-button.active {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            box-shadow: 3px 3px 0px #c44569;
+        }
+        
+        .schedule-cell {
+            border: 3px solid #2c3e50;
+            background: #fff;
+            transition: all 0.2s ease;
+        }
+        
+        .schedule-cell:hover {
+            transform: scale(1.05);
+            box-shadow: 4px 4px 0px #ff6b6b;
+        }
+        
+        .time-header {
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            border: 3px solid #2c3e50;
+        }
+        
+        .day-header {
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+            border: 3px solid #2c3e50;
+        }
+        
+        .break-cell {
+            background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+            color: white;
+            border: 3px solid #2c3e50;
+        }
+        
+        .subject-item {
+            background: linear-gradient(135deg, #fd79a8 0%, #fdcb6e 100%);
+            border: 3px solid #2c3e50;
+            box-shadow: 3px 3px 0px #e84393;
         }
     </style>
 </head>
-<body>
-    <div class="container">
-        <!-- 標題區域 -->
-        <div class="header">
-            <h1>🌟 國小志工EQ組排班系統 🌟</h1>
-            <p>讓愛心志工與學校老師輕鬆配對！</p>
+<body class="min-h-screen p-4">
+    <div class="max-w-7xl mx-auto">
+        <!-- 標題 -->
+        <div class="text-center mb-8">
+            <h1 class="text-5xl font-bold text-white mb-4" style="text-shadow: 4px 4px 0px #2c3e50;">🎨 普普風課表系統</h1>
+            <p class="text-2xl text-white font-medium" style="text-shadow: 2px 2px 0px #2c3e50;">設定課程 ➜ 排課表 ➜ 完成！</p>
         </div>
 
-        <!-- 模式切換按鈕 -->
-        <div class="mode-switcher">
-            <button class="mode-btn volunteer-mode" id="volunteer-mode-btn" onclick="switchMode('volunteer')">
-                🙋‍♀️ 我是志工
+        <!-- 分頁按鈕 -->
+        <div class="flex justify-center gap-4 mb-8">
+            <button onclick="showTab('subjects')" id="subjects-tab" class="tab-button active px-8 py-4 rounded-2xl font-bold text-white text-xl">
+                📚 課程設定
             </button>
-            <button class="mode-btn teacher-mode" id="teacher-mode-btn" onclick="switchMode('teacher')">
-                👩‍🏫 我是老師
+            <button onclick="showTab('schedule')" id="schedule-tab" class="tab-button px-8 py-4 rounded-2xl font-bold text-white text-xl">
+                📅 課表編排
             </button>
         </div>
 
-        <!-- 志工模式說明 -->
-        <div id="volunteer-instructions" class="instructions">
-            <h4>💝 志工朋友使用說明：</h4>
-            <ul>
-                <li>請先填寫您的暱稱</li>
-                <li>點選您有空的時段進行登記</li>
-                <li>可以登記多個時段</li>
-                <li>登記後該時段會顯示綠色，並顯示可服務班級數</li>
-            </ul>
-        </div>
-
-        <!-- 老師模式說明 -->
-        <div id="teacher-instructions" class="instructions" style="display: none;">
-            <h4>📚 老師使用說明：</h4>
-            <ul>
-                <li>綠色時段表示有志工可以入班</li>
-                <li>點選綠色時段可以登記您的班級</li>
-                <li>數字代表還有幾個班級可以登記</li>
-                <li>先搶先贏，額滿為止！</li>
-            </ul>
-        </div>
-
-        <!-- 志工填寫表單 -->
-        <div id="volunteer-form" class="volunteer-form">
-            <h3>🌈 志工資訊登記</h3>
-            <div class="form-group">
-                <label>暱稱：</label>
-                <input type="text" id="volunteer-name" placeholder="請輸入您的暱稱">
-                <button class="submit-btn" id="register-btn" onclick="registerVolunteer()">確認</button>
-            </div>
-            <div id="volunteer-status"></div>
-        </div>
-
-        <!-- 課表區域 -->
-        <div class="schedule-container">
-            <h2 class="schedule-title">📅 每週課表安排</h2>
-            
-            <div id="loading" class="loading">
-                🔄 載入課表資料中...
-            </div>
-
-            <div id="schedule-content" style="display: none;">
-                <table class="schedule-table" id="schedule-table">
-                    <thead>
-                        <tr>
-                            <th>時段</th>
-                            <th>週一</th>
-                            <th>週二</th>
-                            <th>週三</th>
-                            <th>週四</th>
-                            <th>週五</th>
-                        </tr>
-                    </thead>
-                    <tbody id="schedule-tbody">
-                        <!-- 課表內容會動態載入 -->
-                    </tbody>
-                </table>
-
-                <!-- 圖例說明 -->
-                <div class="legend">
-                    <div class="legend-item">
-                        <div class="legend-color legend-available"></div>
-                        <span>有志工可入班</span>
+        <!-- 課程設定頁面 -->
+        <div id="subjects-page" class="tab-content">
+            <!-- 學校名稱設定 -->
+            <div class="pop-card rounded-3xl p-8 text-white mb-8">
+                <h2 class="text-3xl font-bold mb-6 text-center">🏫 學校名稱設定</h2>
+                <div class="flex gap-4 items-end">
+                    <div class="flex-1">
+                        <label class="block text-xl font-bold mb-2">學校名稱：</label>
+                        <input type="text" id="school-name-input" class="pop-input w-full p-4 rounded-xl text-black text-lg font-medium" placeholder="例如：新北市自強國小、台北市中正國小...">
                     </div>
-                    <div class="legend-item">
-                        <div class="legend-color legend-unavailable"></div>
-                        <span>無志工</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-color legend-booked"></div>
-                        <span>已滿額</span>
-                    </div>
+                    <button onclick="updateSchoolName()" class="pop-button text-white px-8 py-4 rounded-xl font-bold text-lg">
+                        🏫 更新學校
+                    </button>
                 </div>
             </div>
 
-            <div id="error-display"></div>
+            <div class="pop-card rounded-3xl p-8 text-white mb-8">
+                <h2 class="text-3xl font-bold mb-6 text-center">🏷️ 課表標題設定</h2>
+                <div class="flex gap-4 items-end">
+                    <div class="flex-1">
+                        <label class="block text-xl font-bold mb-2">課表標題：</label>
+                        <input type="text" id="schedule-title-input" class="pop-input w-full p-4 rounded-xl text-black text-lg font-medium" placeholder="例如：五年4班的課表、小明的課表...">
+                    </div>
+                    <button onclick="updateScheduleTitle()" class="pop-button text-white px-8 py-4 rounded-xl font-bold text-lg">
+                        ✏️ 更新標題
+                    </button>
+                </div>
+            </div>
+
+            <div class="pop-card rounded-3xl p-8 text-white mb-8">
+                <h2 class="text-3xl font-bold mb-6 text-center">🎯 新增課程</h2>
+                <div class="flex gap-4 items-end">
+                    <div class="flex-1">
+                        <label class="block text-xl font-bold mb-2">課程名稱：</label>
+                        <input type="text" id="subject-input" class="pop-input w-full p-4 rounded-xl text-black text-lg font-medium" placeholder="例如：國語、數學、英語...">
+                    </div>
+                    <button onclick="addSubject()" class="pop-button text-white px-8 py-4 rounded-xl font-bold text-lg">
+                        ➕ 新增
+                    </button>
+                </div>
+            </div>
+
+            <div class="pop-card rounded-3xl p-8 text-white">
+                <h2 class="text-3xl font-bold mb-6 text-center">📋 課程清單</h2>
+                <div id="subjects-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- 預設課程 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 課表編排頁面 -->
+        <div id="schedule-page" class="tab-content hidden">
+            <div class="pop-card rounded-3xl p-8 overflow-x-auto">
+                <div id="school-name-display" class="text-xl font-bold mb-2 text-center text-white" style="min-height: 28px;"></div>
+                <h2 id="schedule-page-title" class="text-3xl font-bold mb-6 text-center text-white">📅 課表編排</h2>
+                <table class="w-full border-collapse min-w-[800px]">
+                    <thead>
+                        <tr>
+                            <th class="time-header p-4 text-center font-bold text-2xl text-black">時間</th>
+                            <th class="day-header p-4 text-center font-bold text-2xl text-black">週一</th>
+                            <th class="day-header p-4 text-center font-bold text-2xl text-black">週二</th>
+                            <th class="day-header p-4 text-center font-bold text-2xl text-black">週三</th>
+                            <th class="day-header p-4 text-center font-bold text-2xl text-black">週四</th>
+                            <th class="day-header p-4 text-center font-bold text-2xl text-black">週五</th>
+                        </tr>
+                    </thead>
+                    <tbody id="schedule-table">
+                        <!-- 課表內容將由JavaScript生成 -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 操作按鈕 -->
+            <div class="flex justify-center gap-4 mt-8 flex-wrap">
+                <button onclick="clearSchedule()" class="pop-button text-white px-8 py-4 rounded-xl font-bold text-lg">
+                    🗑️清空課表
+                </button>
+                <button onclick="saveSchedule()" class="pop-button text-white px-8 py-4 rounded-xl font-bold text-lg">
+                    💾儲存課表
+                </button>
+                <button onclick="previewExport()" class="pop-button text-white px-8 py-4 rounded-xl font-bold text-lg">
+                    👁️預覽匯出效果
+                </button>
+                <button onclick="exportToPDF(event)" class="pop-button text-white px-8 py-4 rounded-xl font-bold text-lg">
+                    📄匯出PDF
+                </button>
+                <button onclick="exportToJPEG(event)" class="pop-button text-white px-8 py-4 rounded-xl font-bold text-lg">
+                    🖼️匯出圖片
+                </button>
+            </div>
         </div>
     </div>
 
-    <!-- 班級選擇彈窗 -->
-    <div id="class-modal" class="modal">
-        <div class="modal-content">
-            <h3>請選擇班級</h3>
-            <p>時段：<span id="selected-slot"></span></p>
-            <p>剩餘名額：<span id="remaining-slots"></span> 個班級</p>
-            
-            <div id="modal-messages"></div>
-            
-            <div class="class-grid" id="class-grid">
-                <!-- 五年級 -->
-                <div style="grid-column: 1/-1; text-align: center; font-weight: bold; color: #FF6B35; margin: 10px 0;">五年級</div>
-                <button class="class-btn" onclick="selectClass('五年1班')">1班</button>
-                <button class="class-btn" onclick="selectClass('五年2班')">2班</button>
-                <button class="class-btn" onclick="selectClass('五年3班')">3班</button>
-                <button class="class-btn" onclick="selectClass('五年4班')">4班</button>
-                <button class="class-btn" onclick="selectClass('五年5班')">5班</button>
-                <button class="class-btn" onclick="selectClass('五年6班')">6班</button>
-                <button class="class-btn" onclick="selectClass('五年7班')">7班</button>
-                <button class="class-btn" onclick="selectClass('五年8班')">8班</button>
-                <button class="class-btn" onclick="selectClass('五年9班')">9班</button>
-                <button class="class-btn" onclick="selectClass('五年10班')">10班</button>
-                <button class="class-btn" onclick="selectClass('五年11班')">11班</button>
-                
-                <!-- 六年級 -->
-                <div style="grid-column: 1/-1; text-align: center; font-weight: bold; color: #4ECDC4; margin: 10px 0;">六年級</div>
-                <button class="class-btn" onclick="selectClass('六年1班')">1班</button>
-                <button class="class-btn" onclick="selectClass('六年2班')">2班</button>
-                <button class="class-btn" onclick="selectClass('六年3班')">3班</button>
-                <button class="class-btn" onclick="selectClass('六年4班')">4班</button>
-                <button class="class-btn" onclick="selectClass('六年5班')">5班</button>
-                <button class="class-btn" onclick="selectClass('六年6班')">6班</button>
-                <button class="class-btn" onclick="selectClass('六年7班')">7班</button>
-                <button class="class-btn" onclick="selectClass('六年8班')">8班</button>
-                <button class="class-btn" onclick="selectClass('六年9班')">9班</button>
-                <button class="class-btn" onclick="selectClass('六年10班')">10班</button>
-                <button class="class-btn" onclick="selectClass('六年11班')">11班</button>
+    <!-- 圖案選擇器彈窗 -->
+    <div id="icon-picker-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="pop-card rounded-3xl p-8 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+            <h3 class="text-2xl font-bold text-white mb-6 text-center">🎨 選擇圖案</h3>
+            <div id="icon-grid" class="grid grid-cols-6 gap-4 mb-6">
+                <!-- 圖案選項將由JavaScript生成 -->
             </div>
-            
-            <div style="text-align: center; margin-top: 20px;">
-                <button class="submit-btn" onclick="closeModal()">取消</button>
+            <div class="flex justify-center gap-4">
+                <button onclick="closeIconPicker()" class="pop-button text-white px-6 py-3 rounded-xl font-bold">
+                    ❌ 取消
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 預覽匯出彈窗 -->
+    <div id="preview-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-3xl p-8 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto border-4 border-black">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-bold text-black">👁️ 匯出預覽效果</h3>
+                <button onclick="closePreview()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl font-bold">
+                    ❌ 關閉
+                </button>
+            </div>
+            <div class="bg-gray-100 p-4 rounded-xl mb-4">
+                <p class="text-gray-700 text-sm">
+                    📋 <strong>預覽說明：</strong>這是匯出PDF/圖片時的實際效果預覽。匯出的檔案會是A4尺寸，包含你設定的標題、完整課表和底部資訊。
+                </p>
+            </div>
+            <div id="preview-content" class="border-2 border-gray-300 bg-white" style="transform: scale(0.7); transform-origin: top left; width: 142.8%; height: 142.8%;">
+                <!-- 預覽內容將由JavaScript生成 -->
+            </div>
+            <div class="flex justify-center gap-4 mt-6">
+                <button onclick="closePreview()" class="pop-button text-white px-6 py-3 rounded-xl font-bold">
+                    ✅ 確認效果
+                </button>
             </div>
         </div>
     </div>
 
     <script>
-        // 全域變數
-        let currentMode = 'volunteer';
-        let currentVolunteerId = '';
-        let currentVolunteerName = '';
-        let currentSlot = {};
-        let scheduleData = {};
-        let timeSlots = [];
-
-        // Google Apps Script Web App URL - 請替換為您的實際URL
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyQ-ZXqysygjlSIKvJFMv6HUG-jRLb8ed0SA4jCA52kfW6q58ZGiEfp8TGHUeVcvW4Geg/exec';
-
-        // =================================================================
-        // 初始化和模式切換
-        // =================================================================
-
-        // 頁面載入時初始化
-        window.addEventListener('load', function() {
-            switchMode('volunteer');
-            loadScheduleData();
-        });
-
-        // 切換模式
-        function switchMode(mode) {
-            currentMode = mode;
+        // 通知系統
+        function showNotification(message, type = 'success') {
+            // 移除現有通知
+            const existingNotification = document.querySelector('.notification');
+            if (existingNotification) {
+                existingNotification.remove();
+            }
             
-            const volunteerInstructions = document.getElementById('volunteer-instructions');
-            const teacherInstructions = document.getElementById('teacher-instructions');
-            const volunteerForm = document.getElementById('volunteer-form');
-            const volunteerModeBtn = document.getElementById('volunteer-mode-btn');
-            const teacherModeBtn = document.getElementById('teacher-mode-btn');
+            // 創建通知元素
+            const notification = document.createElement('div');
+            notification.className = 'notification fixed top-4 right-4 z-50 px-6 py-4 rounded-xl font-bold text-white shadow-lg transform transition-all duration-300 translate-x-full';
             
-            // 重置按鈕狀態
-            volunteerModeBtn.classList.remove('active');
-            teacherModeBtn.classList.remove('active');
+            // 根據類型設定顏色
+            switch (type) {
+                case 'success':
+                    notification.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+                    break;
+                case 'warning':
+                    notification.style.background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
+                    break;
+                case 'error':
+                    notification.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
+                    break;
+                default:
+                    notification.style.background = 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)';
+            }
             
-            if (mode === 'volunteer') {
-                volunteerInstructions.style.display = 'block';
-                teacherInstructions.style.display = 'none';
-                volunteerForm.style.display = 'block';
-                volunteerModeBtn.classList.add('active');
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            // 顯示動畫
+            setTimeout(() => {
+                notification.style.transform = 'translateX(0)';
+            }, 100);
+            
+            // 自動隱藏
+            setTimeout(() => {
+                notification.style.transform = 'translateX(full)';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.remove();
+                    }
+                }, 300);
+            }, 3000);
+        }
+        
+        // 預設課程和對應圖案
+        let subjects = ['國語', '數學', '英語', '自然', '社會', '體育', '音樂', '美術', '健康', '綜合'];
+        
+        // 課表標題
+        let scheduleTitle = '📅 課表編排';
+        
+        // 學校名稱
+        let schoolName = '';
+        
+        // 課程圖案對應表
+        const subjectIcons = {
+            '國語': '📚',
+            '數學': '🔢',
+            '英語': '🌍',
+            '自然': '🔬',
+            '社會': '🏛️',
+            '體育': '⚽',
+            '音樂': '🎵',
+            '美術': '🎨',
+            '健康': '💪',
+            '綜合': '🌟',
+            '電腦': '💻',
+            '閱讀': '📖',
+            '寫字': '✏️',
+            '生活': '🌈',
+            '道德': '❤️',
+            '科學': '🧪',
+            '歷史': '📜',
+            '地理': '🗺️',
+            '公民': '🏛️',
+            '童軍': '🏕️'
+        };
+        
+        // 可選擇的圖案清單
+        const availableIcons = [
+            '📚', '🔢', '🌍', '🔬', '🏛️', '⚽', '🎵', '🎨', '💪', '🌟',
+            '💻', '📖', '✏️', '🌈', '❤️', '🧪', '📜', '🗺️', '🏕️', '📝',
+            '🎯', '💡', '🔍', '⭐', '🎪', '🎭', '🎲', '🎸', '🎤', '🎬',
+            '🏀', '🏈', '🎾', '🏐', '🏓', '🥊', '🏊', '🚴', '🏃', '🤸',
+            '🧮', '📐', '📏', '🔬', '🧬', '⚗️', '🔭', '🌡️', '💊', '🩺',
+            '🌱', '🌸', '🌺', '🌻', '🌷', '🌹', '🌿', '🍀', '🌳', '🌲',
+            '🎈', '🎉', '🎊', '🎁', '🏆', '🥇', '🥈', '🥉', '🏅', '🎖️'
+        ];
+        
+        // 當前選擇的課程
+        let currentSubjectForIcon = '';
+        
+        // 獲取課程圖案
+        function getSubjectIcon(subject) {
+            return subjectIcons[subject] || '📝';
+        }
+        
+        // 顯示圖案選擇器
+        function showIconPicker(subject) {
+            currentSubjectForIcon = subject;
+            const modal = document.getElementById('icon-picker-modal');
+            const iconGrid = document.getElementById('icon-grid');
+            
+            // 清空圖案網格
+            iconGrid.innerHTML = '';
+            
+            // 生成圖案選項
+            availableIcons.forEach(icon => {
+                const button = document.createElement('button');
+                button.className = 'w-12 h-12 text-2xl bg-white bg-opacity-20 hover:bg-opacity-40 rounded-xl transition-all transform hover:scale-110 flex items-center justify-center';
+                button.textContent = icon;
+                button.onclick = () => selectIcon(icon);
+                
+                // 如果是當前圖案，加上選中樣式
+                if (icon === getSubjectIcon(subject)) {
+                    button.className += ' ring-4 ring-yellow-400 bg-opacity-60';
+                }
+                
+                iconGrid.appendChild(button);
+            });
+            
+            // 顯示彈窗
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+        
+        // 選擇圖案
+        function selectIcon(icon) {
+            if (currentSubjectForIcon) {
+                subjectIcons[currentSubjectForIcon] = icon;
+                renderSubjects();
+                updateScheduleSelects();
+                saveData();
+                closeIconPicker();
+            }
+        }
+        
+        // 關閉圖案選擇器
+        function closeIconPicker() {
+            const modal = document.getElementById('icon-picker-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            currentSubjectForIcon = '';
+        }
+        
+        // 更新課表標題
+        function updateScheduleTitle() {
+            const input = document.getElementById('schedule-title-input');
+            const newTitle = input.value.trim();
+            
+            if (newTitle) {
+                scheduleTitle = newTitle;
+                document.getElementById('schedule-page-title').textContent = scheduleTitle;
+                saveData();
+                showNotification('🎉 課表標題已更新！');
             } else {
-                volunteerInstructions.style.display = 'none';
-                teacherInstructions.style.display = 'block';
-                volunteerForm.style.display = 'none';
-                teacherModeBtn.classList.add('active');
+                showNotification('請輸入課表標題！', 'warning');
             }
         }
-
-        // =================================================================
-        // 志工相關功能
-        // =================================================================
-
-        // 註冊志工
-        async function registerVolunteer() {
-            const nameInput = document.getElementById('volunteer-name');
-            const registerBtn = document.getElementById('register-btn');
-            const statusDiv = document.getElementById('volunteer-status');
+        
+        // 更新學校名稱
+        function updateSchoolName() {
+            const input = document.getElementById('school-name-input');
+            const newSchoolName = input.value.trim();
             
-            const nickname = nameInput.value.trim();
-            if (!nickname) {
-                showMessage(statusDiv, '請先填寫暱稱喔！', 'error');
-                return;
-            }
+            schoolName = newSchoolName; // 允許空白
+            document.getElementById('school-name-display').textContent = schoolName;
+            saveData();
+            showNotification('🎉 學校名稱已更新！');
+        }
+        
+        // 課程時間表
+        const timeSlots = [
+            { time: '08:00-08:40', period: '早自習', isBreak: true },
+            { time: '08:45-09:25', period: '第一節' },
+            { time: '09:35-10:15', period: '第二節' },
+            { time: '10:30-11:10', period: '第三節' },
+            { time: '11:20-12:00', period: '第四節' },
+            { time: '12:00-13:20', period: '午休', isBreak: true },
+            { time: '13:30-14:10', period: '第五節' },
+            { time: '14:20-15:00', period: '第六節' },
+            { time: '15:20-16:00', period: '第七節' }
+        ];
+
+        // 顯示分頁
+        function showTab(tabName) {
+            // 隱藏所有分頁
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.add('hidden');
+            });
             
-            try {
-                registerBtn.disabled = true;
-                registerBtn.textContent = '註冊中...';
-                
-                const response = await makeRequest('addVolunteer', { nickname });
-                
-                if (response.success) {
-                    currentVolunteerId = response.volunteerId;
-                    currentVolunteerName = nickname;
-                    showMessage(statusDiv, response.message + ' 現在可以開始選擇有空的時段囉～', 'success');
-                    nameInput.disabled = true;
-                    registerBtn.textContent = '已註冊';
-                } else {
-                    showMessage(statusDiv, response.error, 'error');
-                    registerBtn.disabled = false;
-                    registerBtn.textContent = '確認';
-                }
-            } catch (error) {
-                showMessage(statusDiv, '註冊失敗：' + error.message, 'error');
-                registerBtn.disabled = false;
-                registerBtn.textContent = '確認';
-            }
-        }
-
-        // 新增志工時段
-        async function addVolunteerSlot(day, timeSlot) {
-            if (!currentVolunteerId) {
-                alert('請先填寫暱稱並註冊！');
-                return;
-            }
+            // 移除所有按鈕的active狀態
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
             
-            try {
-                const response = await makeRequest('addVolunteerSlot', {
-                    volunteerId: currentVolunteerId,
-                    day: day,
-                    timeSlot: timeSlot
-                });
-                
-                if (response.success) {
-                    alert(response.message);
-                    loadScheduleData(); // 重新載入課表
-                } else {
-                    alert(response.error);
+            // 顯示選中的分頁
+            document.getElementById(tabName + '-page').classList.remove('hidden');
+            document.getElementById(tabName + '-tab').classList.add('active');
+        }
+
+        // 新增課程
+        function addSubject() {
+            const input = document.getElementById('subject-input');
+            const subjectName = input.value.trim();
+            
+            if (subjectName && !subjects.includes(subjectName)) {
+                subjects.push(subjectName);
+                // 如果是新課程且沒有預設圖案，可以自動分配一個
+                if (!subjectIcons[subjectName]) {
+                    const defaultIcons = ['📝', '📋', '📊', '🎯', '💡', '🔍', '⭐', '🎪', '🎭', '🎲'];
+                    const randomIcon = defaultIcons[Math.floor(Math.random() * defaultIcons.length)];
+                    subjectIcons[subjectName] = randomIcon;
                 }
-            } catch (error) {
-                alert('登記失敗：' + error.message);
+                input.value = '';
+                renderSubjects();
+                updateScheduleSelects();
+                saveData();
+            } else if (subjects.includes(subjectName)) {
+                showNotification('這個課程已經存在了！', 'warning');
             }
         }
 
-        // =================================================================
-        // 老師相關功能
-        // =================================================================
-
-        // 處理時段點擊
-        function handleSlotClick(day, timeSlot) {
-            if (currentMode === 'volunteer') {
-                // 志工模式：登記有空時段
-                addVolunteerSlot(day, timeSlot);
-            } else {
-                // 老師模式：選擇班級
-                const slotData = scheduleData[day][timeSlot];
-                
-                if (slotData.remaining <= 0) {
-                    alert('這個時段已經額滿囉！請選擇其他時段～');
-                    return;
-                }
-                
-                currentSlot = { day, timeSlot, slotData };
-                
-                const timeSlotInfo = timeSlots.find(ts => ts.code === timeSlot);
-                const dayNames = ['', '週一', '週二', '週三', '週四', '週五'];
-                const displayName = `${dayNames[day]} ${timeSlotInfo.name} (${timeSlotInfo.hours})`;
-                
-                document.getElementById('selected-slot').textContent = displayName;
-                document.getElementById('remaining-slots').textContent = slotData.remaining;
-                
-                // 更新已預約班級的按鈕狀態
-                updateClassButtons(slotData.bookedClasses);
-                
-                document.getElementById('class-modal').style.display = 'block';
-            }
+        // 刪除課程
+        function removeSubject(subjectName) {
+            subjects = subjects.filter(s => s !== subjectName);
+            renderSubjects();
+            updateScheduleSelects();
+            saveData();
+            showNotification(`已刪除課程「${subjectName}」`);
         }
 
-        // 更新班級按鈕狀態
-        function updateClassButtons(bookedClasses) {
-            const classButtons = document.querySelectorAll('.class-btn');
-            classButtons.forEach(btn => {
-                const className = btn.textContent.includes('班') ? 
-                    btn.previousElementSibling?.textContent + btn.textContent : 
-                    btn.getAttribute('onclick').match(/'(.+?)'/)[1];
-                
-                if (bookedClasses.includes(className)) {
-                    btn.disabled = true;
-                    btn.textContent = btn.textContent + ' (已預約)';
-                } else {
-                    btn.disabled = false;
-                    btn.textContent = btn.textContent.replace(' (已預約)', '');
-                }
+        // 渲染課程清單
+        function renderSubjects() {
+            const container = document.getElementById('subjects-list');
+            container.innerHTML = '';
+            
+            subjects.forEach(subject => {
+                const div = document.createElement('div');
+                div.className = 'subject-item p-4 rounded-xl';
+                div.innerHTML = `
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="font-bold text-lg text-white">${getSubjectIcon(subject)} ${subject}</span>
+                        <button onclick="removeSubject('${subject}')" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg font-bold">
+                            ❌
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-white text-sm font-medium">圖案：</span>
+                        <button onclick="showIconPicker('${subject}')" class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-3 py-1 rounded-lg font-bold text-sm transition-all">
+                            🎨 更換圖案
+                        </button>
+                    </div>
+                `;
+                container.appendChild(div);
             });
         }
 
-        // 選擇班級
-        async function selectClass(className) {
-            const modalMessages = document.getElementById('modal-messages');
-            
-            try {
-                const response = await makeRequest('bookClass', {
-                    day: currentSlot.day,
-                    timeSlot: currentSlot.timeSlot,
-                    className: className
-                });
-                
-                if (response.success) {
-                    showMessage(modalMessages, response.message, 'success');
-                    setTimeout(() => {
-                        closeModal();
-                        loadScheduleData(); // 重新載入課表
-                    }, 1500);
-                } else {
-                    showMessage(modalMessages, response.error, 'error');
-                }
-            } catch (error) {
-                showMessage(modalMessages, '預約失敗：' + error.message, 'error');
-            }
-        }
-
-        // =================================================================
-        // 課表相關功能
-        // =================================================================
-
-        // 載入課表資料
-        async function loadScheduleData() {
-            const loading = document.getElementById('loading');
-            const scheduleContent = document.getElementById('schedule-content');
-            const errorDisplay = document.getElementById('error-display');
-            
-            try {
-                loading.style.display = 'block';
-                scheduleContent.style.display = 'none';
-                errorDisplay.innerHTML = '';
-                
-                const response = await makeRequest('getScheduleData');
-                
-                if (response.success) {
-                    scheduleData = response.data;
-                    timeSlots = response.timeSlots;
-                    renderScheduleTable();
-                    
-                    loading.style.display = 'none';
-                    scheduleContent.style.display = 'block';
-                } else {
-                    throw new Error(response.error);
-                }
-            } catch (error) {
-                loading.style.display = 'none';
-                showMessage(errorDisplay, '載入課表失敗：' + error.message, 'error');
-            }
-        }
-
-        // 渲染課表
-        function renderScheduleTable() {
-            const tbody = document.getElementById('schedule-tbody');
+        // 生成課表
+        function generateSchedule() {
+            const tbody = document.getElementById('schedule-table');
             tbody.innerHTML = '';
             
-            timeSlots.forEach(timeSlot => {
+            timeSlots.forEach((slot, rowIndex) => {
                 const row = document.createElement('tr');
                 
-                // 時段欄
+                // 時間欄
                 const timeCell = document.createElement('td');
-                timeCell.className = 'time-slot';
-                timeCell.innerHTML = `${timeSlot.name}<br>${timeSlot.hours}`;
+                timeCell.className = slot.isBreak ? 'break-cell p-4 text-center font-bold' : 'time-header p-4 text-center font-bold text-black';
+                timeCell.innerHTML = `${slot.time}<br><span class="text-sm">${slot.period}</span>`;
                 row.appendChild(timeCell);
                 
                 // 週一到週五
-                for (let day = 1; day <= 5; day++) {
-                    const dayCell = document.createElement('td');
-                    const slotData = scheduleData[day][timeSlot.code];
+                for (let day = 0; day < 5; day++) {
+                    const cell = document.createElement('td');
+                    cell.className = slot.isBreak ? 'break-cell p-4 text-center font-bold' : 'schedule-cell p-2 text-center';
                     
-                    if (slotData.volunteerCount === 0) {
-                        // 無志工
-                        dayCell.className = 'unavailable-slot';
-                        dayCell.textContent = '無志工';
-                    } else if (slotData.remaining > 0) {
-                        // 有剩餘名額
-                        dayCell.className = 'available-slot';
-                        dayCell.onclick = () => handleSlotClick(day, timeSlot.code);
-                        
-                        const countDiv = document.createElement('div');
-                        countDiv.className = 'volunteer-count';
-                        countDiv.textContent = slotData.volunteerCount;
-                        dayCell.appendChild(countDiv);
-                        
-                        const infoDiv = document.createElement('div');
-                        infoDiv.className = 'slot-info';
-                        
-                        if (slotData.bookedClasses.length > 0) {
-                            const classesDiv = document.createElement('div');
-                            classesDiv.className = 'registered-classes';
-                            classesDiv.innerHTML = slotData.bookedClasses.join('<br>');
-                            infoDiv.appendChild(classesDiv);
+                    if (slot.isBreak) {
+                        if (slot.period === '午休') {
+                            // 午休時間合併為一格，只在第一天顯示
+                            if (day === 0) {
+                                cell.textContent = '午休時間';
+                                cell.colSpan = 5; // 合併5個欄位
+                                row.appendChild(cell);
+                            }
+                            // 其他天數跳過，因為已經合併了
+                            continue;
+                        } else {
+                            // 早自習保持原樣
+                            cell.textContent = '閱讀時間';
                         }
-                        
-                        const remainingDiv = document.createElement('div');
-                        remainingDiv.className = 'remaining-text';
-                        remainingDiv.textContent = `還可登記${slotData.remaining}班`;
-                        infoDiv.appendChild(remainingDiv);
-                        
-                        dayCell.appendChild(infoDiv);
                     } else {
-                        // 已滿額
-                        dayCell.className = 'fully-booked-slot';
+                        const select = document.createElement('select');
+                        select.className = 'pop-select w-full p-2 rounded-lg font-bold text-black';
+                        select.onchange = saveData;
                         
-                        const countDiv = document.createElement('div');
-                        countDiv.className = 'volunteer-count';
-                        countDiv.textContent = slotData.volunteerCount;
-                        dayCell.appendChild(countDiv);
+                        // 空選項
+                        const emptyOption = document.createElement('option');
+                        emptyOption.value = '';
+                        emptyOption.textContent = '';
+                        select.appendChild(emptyOption);
                         
-                        const infoDiv = document.createElement('div');
-                        infoDiv.className = 'slot-info';
+                        // 課程選項
+                        subjects.forEach(subject => {
+                            const option = document.createElement('option');
+                            option.value = subject;
+                            option.textContent = `${getSubjectIcon(subject)} ${subject}`;
+                            select.appendChild(option);
+                        });
                         
-                        const classesDiv = document.createElement('div');
-                        classesDiv.className = 'registered-classes';
-                        classesDiv.innerHTML = slotData.bookedClasses.join('<br>');
-                        infoDiv.appendChild(classesDiv);
-                        
-                        const fullDiv = document.createElement('div');
-                        fullDiv.className = 'full-text';
-                        fullDiv.textContent = '已滿';
-                        infoDiv.appendChild(fullDiv);
-                        
-                        dayCell.appendChild(infoDiv);
+                        select.id = `schedule-${rowIndex}-${day}`;
+                        cell.appendChild(select);
                     }
                     
-                    row.appendChild(dayCell);
+                    row.appendChild(cell);
                 }
                 
                 tbody.appendChild(row);
             });
         }
 
-        // =================================================================
-        // 工具函數
-        // =================================================================
+        // 更新課表下拉選單
+        function updateScheduleSelects() {
+            const selects = document.querySelectorAll('#schedule-table select');
+            selects.forEach(select => {
+                const currentValue = select.value;
+                select.innerHTML = '';
+                
+                // 空選項
+                const emptyOption = document.createElement('option');
+                emptyOption.value = '';
+                emptyOption.textContent = '';
+                select.appendChild(emptyOption);
+                
+                // 課程選項
+                subjects.forEach(subject => {
+                    const option = document.createElement('option');
+                    option.value = subject;
+                    option.textContent = `${getSubjectIcon(subject)} ${subject}`;
+                    if (subject === currentValue) {
+                        option.selected = true;
+                    }
+                    select.appendChild(option);
+                });
+            });
+        }
 
-        // 發送請求到 Google Apps Script
-        async function makeRequest(action, data = {}) {
-            const formData = new FormData();
-            formData.append('action', action);
-            formData.append('data', JSON.stringify(data));
-            
-            const response = await fetch(SCRIPT_URL, {
-                method: 'POST',
-                body: formData
+        // 清空課表
+        function clearSchedule() {
+            const selects = document.querySelectorAll('#schedule-table select');
+            selects.forEach(select => {
+                select.value = '';
+            });
+            saveData();
+            showNotification('🗑️ 課表已清空');
+        }
+
+        // 儲存資料
+        function saveData() {
+            const scheduleData = {};
+            const selects = document.querySelectorAll('#schedule-table select');
+            selects.forEach(select => {
+                scheduleData[select.id] = select.value;
             });
             
-            if (!response.ok) {
-                throw new Error('網路請求失敗');
+            localStorage.setItem('popScheduleSubjects', JSON.stringify(subjects));
+            localStorage.setItem('popScheduleData', JSON.stringify(scheduleData));
+            localStorage.setItem('popScheduleIcons', JSON.stringify(subjectIcons));
+            localStorage.setItem('popScheduleTitle', scheduleTitle);
+            localStorage.setItem('popScheduleSchoolName', schoolName);
+        }
+
+        // 載入資料
+        function loadData() {
+            const savedSubjects = localStorage.getItem('popScheduleSubjects');
+            const savedSchedule = localStorage.getItem('popScheduleData');
+            const savedIcons = localStorage.getItem('popScheduleIcons');
+            const savedTitle = localStorage.getItem('popScheduleTitle');
+            const savedSchoolName = localStorage.getItem('popScheduleSchoolName');
+            
+            if (savedSubjects) {
+                subjects = JSON.parse(savedSubjects);
             }
             
-            return await response.json();
-        }
-
-        // 顯示訊息
-        function showMessage(container, message, type) {
-            container.innerHTML = `<div class="${type}-message">${message}</div>`;
-        }
-
-        // 關閉彈窗
-        function closeModal() {
-            document.getElementById('class-modal').style.display = 'none';
-            document.getElementById('modal-messages').innerHTML = '';
-        }
-
-        // 點擊彈窗外部關閉
-        window.onclick = function(event) {
-            const modal = document.getElementById('class-modal');
-            if (event.target == modal) {
-                closeModal();
+            if (savedIcons) {
+                const loadedIcons = JSON.parse(savedIcons);
+                Object.assign(subjectIcons, loadedIcons);
+            }
+            
+            if (savedTitle) {
+                scheduleTitle = savedTitle;
+                document.getElementById('schedule-page-title').textContent = scheduleTitle;
+                document.getElementById('schedule-title-input').value = savedTitle.replace('📅 ', '');
+            }
+            
+            if (savedSchoolName) {
+                schoolName = savedSchoolName;
+                document.getElementById('school-name-display').textContent = schoolName;
+                document.getElementById('school-name-input').value = schoolName;
+            }
+            
+            renderSubjects();
+            generateSchedule();
+            
+            if (savedSchedule) {
+                const scheduleData = JSON.parse(savedSchedule);
+                Object.keys(scheduleData).forEach(selectId => {
+                    const select = document.getElementById(selectId);
+                    if (select) {
+                        select.value = scheduleData[selectId];
+                    }
+                });
             }
         }
 
-        // =================================================================
-        // 測試模式（開發用）
-        // =================================================================
+        // 儲存課表
+        function saveSchedule() {
+            saveData();
+            showNotification('🎉 課表已儲存成功！');
+        }
 
-        // 如果沒有設定 SCRIPT_URL，使用測試模式
-        if (SCRIPT_URL.includes('YOUR_SCRIPT_ID')) {
-            console.log('🧪 測試模式：使用模擬資料');
+        // 預覽匯出效果
+        function previewExport() {
+            const modal = document.getElementById('preview-modal');
+            const previewContent = document.getElementById('preview-content');
             
-            // 覆寫 makeRequest 函數使用測試資料
-            window.makeRequest = async function(action, data = {}) {
-                await new Promise(resolve => setTimeout(resolve, 500)); // 模擬網路延遲
+            // 創建預覽內容
+            const exportElement = createExportTable();
+            exportElement.style.cssText = `
+                width: 794px;
+                height: 1123px;
+                background: white;
+                padding: 40px;
+                font-family: 'Noto Sans TC', sans-serif;
+                box-sizing: border-box;
+                margin: 0;
+            `;
+            
+            // 清空並添加預覽內容
+            previewContent.innerHTML = '';
+            previewContent.appendChild(exportElement);
+            
+            // 顯示彈窗
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+        
+        // 關閉預覽
+        function closePreview() {
+            const modal = document.getElementById('preview-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        // 匯出為PDF
+        async function exportToPDF(event) {
+            try {
+                // 顯示載入提示
+                const originalText = event.target.textContent;
+                event.target.textContent = '📄 匯出中...';
+                event.target.disabled = true;
+
+                // 創建匯出專用的課表
+                const exportElement = createExportTable();
+                document.body.appendChild(exportElement);
+
+                // 使用html2canvas截圖
+                const canvas = await html2canvas(exportElement, {
+                    scale: 2,
+                    useCORS: true,
+                    backgroundColor: '#ffffff',
+                    width: 794, // A4寬度 (210mm)
+                    height: 1123 // A4高度 (297mm)
+                });
+
+                // 移除臨時元素
+                document.body.removeChild(exportElement);
+
+                // 創建PDF
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'mm', 'a4');
                 
-                switch(action) {
-                    case 'getScheduleData':
-                        return {
-                            success: true,
-                            data: generateTestScheduleData(),
-                            timeSlots: [
-                                {code: 'morning', name: '早自習', hours: '7:50-8:30'},
-                                {code: 'period1', name: '第一節', hours: '8:40-9:20'},
-                                {code: 'period2', name: '第二節', hours: '9:30-10:10'},
-                                {code: 'period3', name: '第三節', hours: '10:30-11:10'},
-                                {code: 'period4', name: '第四節', hours: '11:20-12:00'},
-                                {code: 'lunch', name: '午休', hours: '12:40-13:20'},
-                                {code: 'period5', name: '第五節', hours: '13:30-14:10'},
-                                {code: 'period6', name: '第六節', hours: '14:20-15:00'},
-                                {code: 'period7', name: '第七節', hours: '15:10-15:50'}
-                            ]
-                        };
-                    case 'addVolunteer':
-                        return {
-                            success: true,
-                            volunteerId: 'TEST_' + Date.now(),
-                            message: `歡迎 ${data.nickname}！`
-                        };
-                    case 'addVolunteerSlot':
-                        return {
-                            success: true,
-                            message: '成功登記時段！'
-                        };
-                    case 'bookClass':
-                        return {
-                            success: true,
-                            message: `${data.className} 成功預約！`
-                        };
-                    default:
-                        return { success: false, error: '未知的操作' };
-                }
-            };
+                const imgData = canvas.toDataURL('image/png');
+                pdf.addImage(imgData, 'PNG', 0, 0, 210, 297);
+                
+                // 轉換為blob並複製到剪貼簿
+                const pdfBlob = pdf.output('blob');
+                const today = new Date().toISOString().split('T')[0];
+                
+                // 創建下載連結
+                const url = URL.createObjectURL(pdfBlob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `國小課表_${today}.pdf`;
+                
+                // 嘗試觸發下載
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+
+                // 恢復按鈕
+                event.target.textContent = originalText;
+                event.target.disabled = false;
+                
+                showNotification('🎉 PDF匯出成功！');
+            } catch (error) {
+                console.error('PDF匯出失敗:', error);
+                showNotification('❌ PDF匯出失敗，請稍後再試', 'error');
+                event.target.textContent = originalText;
+                event.target.disabled = false;
+            }
         }
 
-        // 生成測試課表資料
-        function generateTestScheduleData() {
-            const testData = {};
-            const slots = ['morning', 'period1', 'period2', 'period3', 'period4', 'lunch', 'period5', 'period6', 'period7'];
-            const testClasses = ['五年3班', '六年1班', '五年7班', '六年5班'];
+        // 匯出為JPEG
+        async function exportToJPEG(event) {
+            try {
+                // 顯示載入提示
+                const originalText = event.target.textContent;
+                event.target.textContent = '🖼️ 匯出中...';
+                event.target.disabled = true;
+
+                // 創建匯出專用的課表
+                const exportElement = createExportTable();
+                document.body.appendChild(exportElement);
+
+                // 使用html2canvas截圖
+                const canvas = await html2canvas(exportElement, {
+                    scale: 3,
+                    useCORS: true,
+                    backgroundColor: '#ffffff',
+                    width: 794, // A4寬度
+                    height: 1123 // A4高度
+                });
+
+                // 移除臨時元素
+                document.body.removeChild(exportElement);
+
+                // 轉換為JPEG並下載
+                const link = document.createElement('a');
+                link.download = `國小課表_${new Date().toISOString().split('T')[0]}.jpg`;
+                link.href = canvas.toDataURL('image/jpeg', 0.9);
+                link.click();
+
+                // 恢復按鈕
+                event.target.textContent = originalText;
+                event.target.disabled = false;
+                
+                showNotification('🎉 圖片匯出成功！');
+            } catch (error) {
+                console.error('圖片匯出失敗:', error);
+                showNotification('❌ 圖片匯出失敗，請稍後再試', 'error');
+                event.target.textContent = originalText;
+                event.target.disabled = false;
+            }
+        }
+
+        // 創建匯出專用的課表
+        function createExportTable() {
+            const exportDiv = document.createElement('div');
+            exportDiv.style.cssText = `
+                position: fixed;
+                top: -9999px;
+                left: -9999px;
+                width: 794px;
+                height: 1123px;
+                background: linear-gradient(45deg, #fff5f5 0%, #f0f9ff 25%, #f5f3ff 50%, #fef3c7 75%, #ecfdf5 100%);
+                padding: 40px;
+                font-family: 'Noto Sans TC', sans-serif;
+                box-sizing: border-box;
+                position: relative;
+                overflow: hidden;
+            `;
             
-            for (let day = 1; day <= 5; day++) {
-                testData[day] = {};
-                slots.forEach(slot => {
-                    const volunteerCount = Math.floor(Math.random() * 4); // 0-3 位志工
-                    const bookedCount = volunteerCount > 0 ? Math.floor(Math.random() * Math.min(volunteerCount + 1, 3)) : 0;
-                    const bookedClasses = [];
+            // 添加可愛的學校風格裝飾背景
+            const decorations = document.createElement('div');
+            decorations.innerHTML = `
+                <!-- 左上角裝飾 -->
+                <div style="position: absolute; top: 20px; left: 20px; font-size: 24px; opacity: 0.3; transform: rotate(-15deg);">
+                    📚✏️📐
+                </div>
+                <!-- 右上角裝飾 -->
+                <div style="position: absolute; top: 20px; right: 20px; font-size: 24px; opacity: 0.3; transform: rotate(15deg);">
+                    🎨🖍️📝
+                </div>
+                <!-- 左下角裝飾 -->
+                <div style="position: absolute; bottom: 80px; left: 20px; font-size: 20px; opacity: 0.25; transform: rotate(10deg);">
+                    🌟⭐✨
+                </div>
+                <!-- 右下角裝飾 -->
+                <div style="position: absolute; bottom: 80px; right: 20px; font-size: 20px; opacity: 0.25; transform: rotate(-10deg);">
+                    🎯🏆🎉
+                </div>
+                <!-- 頂部中央裝飾 -->
+                <div style="position: absolute; top: 15px; left: 50%; transform: translateX(-50%) rotate(-5deg); font-size: 18px; opacity: 0.2;">
+                    🎪🎭🎨🎵🎲
+                </div>
+                <!-- 底部中央裝飾 -->
+                <div style="position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%) rotate(5deg); font-size: 16px; opacity: 0.2;">
+                    📖📚📝✏️📐📏
+                </div>
+                <!-- 左側中間裝飾 -->
+                <div style="position: absolute; top: 50%; left: 15px; transform: translateY(-50%) rotate(90deg); font-size: 16px; opacity: 0.15;">
+                    🌈🦋🌸🌺
+                </div>
+                <!-- 右側中間裝飾 -->
+                <div style="position: absolute; top: 50%; right: 15px; transform: translateY(-50%) rotate(-90deg); font-size: 16px; opacity: 0.15;">
+                    🎈🎊🎁🏅
+                </div>
+                <!-- 散落的小裝飾 -->
+                <div style="position: absolute; top: 150px; left: 100px; font-size: 12px; opacity: 0.1; transform: rotate(25deg);">⭐</div>
+                <div style="position: absolute; top: 200px; right: 120px; font-size: 14px; opacity: 0.1; transform: rotate(-20deg);">🌟</div>
+                <div style="position: absolute; top: 350px; left: 80px; font-size: 10px; opacity: 0.1; transform: rotate(45deg);">✨</div>
+                <div style="position: absolute; top: 450px; right: 90px; font-size: 12px; opacity: 0.1; transform: rotate(-35deg);">💫</div>
+                <div style="position: absolute; top: 600px; left: 110px; font-size: 11px; opacity: 0.1; transform: rotate(15deg);">🌈</div>
+                <div style="position: absolute; top: 700px; right: 100px; font-size: 13px; opacity: 0.1; transform: rotate(-25deg);">🎨</div>
+                <div style="position: absolute; top: 800px; left: 90px; font-size: 10px; opacity: 0.1; transform: rotate(30deg);">📚</div>
+                <div style="position: absolute; top: 900px; right: 110px; font-size: 12px; opacity: 0.1; transform: rotate(-40deg);">✏️</div>
+            `;
+            exportDiv.appendChild(decorations);
+
+            // 學校名稱（如果有的話）
+            if (schoolName) {
+                const schoolNameElement = document.createElement('div');
+                schoolNameElement.textContent = schoolName;
+                schoolNameElement.style.cssText = `
+                    text-align: center;
+                    font-size: 24px;
+                    font-weight: bold;
+                    color: #2c3e50;
+                    margin-bottom: 15px;
+                    text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+                `;
+                exportDiv.appendChild(schoolNameElement);
+            }
+
+            // 標題
+            const title = document.createElement('h1');
+            title.textContent = scheduleTitle.includes('📅') ? scheduleTitle.replace('📅 ', '') : scheduleTitle;
+            title.style.cssText = `
+                text-align: center;
+                font-size: 36px;
+                font-weight: bold;
+                color: #2c3e50;
+                margin-bottom: 30px;
+                text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+            `;
+            exportDiv.appendChild(title);
+
+            // 課表
+            const table = document.createElement('table');
+            table.style.cssText = `
+                width: 100%;
+                border-collapse: collapse;
+                margin-bottom: 20px;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            `;
+
+            // 表頭
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            
+            const headers = ['時間', '週一', '週二', '週三', '週四', '週五'];
+            headers.forEach((header, index) => {
+                const th = document.createElement('th');
+                th.textContent = header;
+                th.style.cssText = `
+                    padding: 15px 8px;
+                    border: 3px solid #2c3e50;
+                    background: ${index === 0 ? 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)' : 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)'};
+                    font-weight: bold;
+                    font-size: 18px;
+                    text-align: center;
+                    color: #2c3e50;
+                `;
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+
+            // 表身
+            const tbody = document.createElement('tbody');
+            
+            timeSlots.forEach((slot, rowIndex) => {
+                const row = document.createElement('tr');
+                
+                // 時間欄
+                const timeCell = document.createElement('td');
+                timeCell.innerHTML = `${slot.time}<br><span style="font-size: 14px;">${slot.period}</span>`;
+                timeCell.style.cssText = `
+                    padding: 12px 8px;
+                    border: 3px solid #2c3e50;
+                    background: ${slot.isBreak ? 'linear-gradient(135deg, #74b9ff 0%, #0984e3 100%)' : 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)'};
+                    font-weight: bold;
+                    font-size: 14px;
+                    text-align: center;
+                    color: ${slot.isBreak ? 'white' : '#2c3e50'};
+                `;
+                row.appendChild(timeCell);
+                
+                // 週一到週五
+                for (let day = 0; day < 5; day++) {
+                    const cell = document.createElement('td');
+                    cell.style.cssText = `
+                        padding: 12px 8px;
+                        border: 3px solid #2c3e50;
+                        background: ${slot.isBreak ? 'linear-gradient(135deg, #74b9ff 0%, #0984e3 100%)' : 'white'};
+                        font-weight: bold;
+                        font-size: 16px;
+                        text-align: center;
+                        color: ${slot.isBreak ? 'white' : '#2c3e50'};
+                        min-height: 50px;
+                        vertical-align: middle;
+                    `;
                     
-                    for (let i = 0; i < bookedCount; i++) {
-                        const randomClass = testClasses[Math.floor(Math.random() * testClasses.length)];
-                        if (!bookedClasses.includes(randomClass)) {
-                            bookedClasses.push(randomClass);
+                    if (slot.isBreak) {
+                        if (slot.period === '午休') {
+                            // 午休時間合併為一格，只在第一天顯示
+                            if (day === 0) {
+                                cell.textContent = '午休時間';
+                                cell.colSpan = 5; // 合併5個欄位
+                                row.appendChild(cell);
+                            }
+                            // 其他天數跳過，因為已經合併了
+                            continue;
+                        } else {
+                            // 早自習保持原樣
+                            cell.textContent = '閱讀時間';
+                        }
+                    } else {
+                        const select = document.getElementById(`schedule-${rowIndex}-${day}`);
+                        if (select && select.value) {
+                            cell.innerHTML = `<div style="font-size: 20px; margin-bottom: 4px;">${getSubjectIcon(select.value)}</div><div>${select.value}</div>`;
+                            // 根據課程設定不同顏色
+                            const colors = [
+                                'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)',
+                                'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
+                                'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
+                                'linear-gradient(135deg, #d299c2 0%, #fef9d7 100%)',
+                                'linear-gradient(135deg, #89f7fe 0%, #66a6ff 100%)',
+                                'linear-gradient(135deg, #fbc2eb 0%, #a6c1ee 100%)',
+                                'linear-gradient(135deg, #fdbb2d 0%, #22c1c3 100%)',
+                                'linear-gradient(135deg, #ff758c 0%, #ff7eb3 100%)',
+                                'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+                                'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)'
+                            ];
+                            const colorIndex = subjects.indexOf(select.value) % colors.length;
+                            cell.style.background = colors[colorIndex];
+                        } else {
+                            cell.textContent = '';
                         }
                     }
                     
-                    testData[day][slot] = {
-                        volunteerCount: volunteerCount,
-                        bookedClasses: bookedClasses,
-                        remaining: Math.max(0, volunteerCount - bookedClasses.length)
-                    };
-                });
+                    row.appendChild(cell);
+                }
+                
+                tbody.appendChild(row);
+            });
+            
+            table.appendChild(tbody);
+            exportDiv.appendChild(table);
+
+            // 底部資訊
+            const footer = document.createElement('div');
+            footer.innerHTML = `
+                <div style="text-align: center; margin-top: 20px; color: #666; font-size: 14px;">
+                    匯出日期：${new Date().toLocaleDateString('zh-TW')} | 普普風課表系統
+                </div>
+            `;
+            exportDiv.appendChild(footer);
+
+            return exportDiv;
+        }
+
+        // Enter鍵新增課程和更新標題
+        document.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && e.target.id === 'subject-input') {
+                addSubject();
+            } else if (e.key === 'Enter' && e.target.id === 'schedule-title-input') {
+                updateScheduleTitle();
+            } else if (e.key === 'Enter' && e.target.id === 'school-name-input') {
+                updateSchoolName();
+            }
+        });
+
+        // 點擊彈窗外部關閉
+        document.addEventListener('click', function(e) {
+            const iconModal = document.getElementById('icon-picker-modal');
+            const previewModal = document.getElementById('preview-modal');
+            
+            if (e.target === iconModal) {
+                closeIconPicker();
             }
             
-            return testData;
-        }
+            if (e.target === previewModal) {
+                closePreview();
+            }
+        });
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadData();
+        });
     </script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9764997662908466',t:'MTc1NjM5MjQwMS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
-
-        body {
-            font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #FFE8D6 0%, #FFF2E7 50%, #E8F4FD 100%);
-            min-height: 100vh;
-            color: #2C3E50;
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 40px;
-            background: white;
-            padding: 30px;
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(255, 107, 107, 0.1);
-            border: 3px solid #FF6B6B;
-        }
-
-        .header h1 {
-            color: #FF6B6B;
-            font-size: 2.5em;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 0px #FFE8E8;
-        }
-
-        .header p {
-            color: #4ECDC4;
-            font-size: 1.2em;
-            font-weight: bold;
-        }
-
-        .mode-switcher {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        .mode-btn {
-            padding: 15px 30px;
-            border: none;
-            border-radius: 50px;
-            font-size: 1.1em;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-        }
-
-        .volunteer-mode {
-            background: linear-gradient(45deg, #4ECDC4, #44A08D);
-            color: white;
-        }
-
-        .teacher-mode {
-            background: linear-gradient(45deg, #FFD93D, #FF6B35);
-            color: white;
-        }
-
-        .mode-btn:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
-        }
-
-        .mode-btn.active {
-            transform: scale(1.05);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-        }
-
-        .volunteer-form {
-            background: white;
-            padding: 25px;
-            border-radius: 15px;
-            margin-bottom: 30px;
-            box-shadow: 0 8px 25px rgba(76, 205, 196, 0.1);
-            border-left: 5px solid #4ECDC4;
-        }
-
-        .volunteer-form h3 {
-            color: #4ECDC4;
-            margin-bottom: 15px;
-            font-size: 1.3em;
-        }
-
-        .form-group {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin-bottom: 15px;
-        }
-
-        .form-group input {
-            padding: 10px 15px;
-            border: 2px solid #4ECDC4;
-            border-radius: 25px;
-            font-size: 1em;
-            outline: none;
-            transition: all 0.3s ease;
-            flex: 1;
-            max-width: 200px;
-        }
-
-        .form-group input:focus {
-            border-color: #FF6B6B;
-            box-shadow: 0 0 10px rgba(255, 107, 107, 0.2);
-        }
-
-        .submit-btn {
-            background: linear-gradient(45deg, #4ECDC4, #44A08D);
-            color: white;
-            padding: 12px 25px;
-            border: none;
-            border-radius: 25px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: all 0.3s ease;
-        }
-
-        .submit-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(76, 205, 196, 0.3);
-        }
-
-        .submit-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .schedule-container {
-            background: white;
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
-            border: 3px solid #FFD93D;
-        }
-
-        .schedule-title {
-            text-align: center;
-            color: #FF6B35;
-            font-size: 1.8em;
-            margin-bottom: 25px;
-            text-shadow: 1px 1px 0px #FFE8D6;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 50px;
-            font-size: 1.2em;
-            color: #666;
-        }
-
-        .schedule-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.95em;
-        }
-
-        .schedule-table th,
-        .schedule-table td {
-            border: 2px solid #FFD93D;
-            padding: 15px 10px;
-            text-align: center;
-            position: relative;
-            min-height: 60px;
-            vertical-align: top;
-        }
-
-        .schedule-table th {
-            background: linear-gradient(45deg, #FFD93D, #FF6B35);
-            color: white;
-            font-weight: bold;
-            text-shadow: 1px 1px 0px rgba(0,0,0,0.2);
-        }
-
-        .time-slot {
-            background: #FFF8E1;
-            font-weight: bold;
-            color: #FF6B35;
-            width: 120px;
-        }
-
-        .available-slot {
-            background: linear-gradient(135deg, #C8E6C9, #A5D6A7);
-            cursor: pointer;
-            transition: all 0.3s ease;
-            position: relative;
-        }
-
-        .available-slot:hover {
-            background: linear-gradient(135deg, #A5D6A7, #81C784);
-            transform: scale(1.02);
-        }
-
-        .volunteer-count {
-            background: #4ECDC4;
-            color: white;
-            border-radius: 50%;
-            width: 25px;
-            height: 25px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.8em;
-            font-weight: bold;
-            position: absolute;
-            top: 5px;
-            right: 5px;
-        }
-
-        .slot-info {
-            font-size: 0.75em;
-            margin-top: 8px;
-            line-height: 1.2;
-        }
-
-        .registered-classes {
-            font-weight: bold;
-            color: #2E7D32;
-            margin-bottom: 3px;
-        }
-
-        .remaining-text {
-            color: #1976D2;
-            font-weight: bold;
-            background: rgba(255,255,255,0.8);
-            padding: 2px 6px;
-            border-radius: 10px;
-            display: inline-block;
-        }
-
-        .full-text {
-            color: #D32F2F;
-            font-weight: bold;
-            background: rgba(255,255,255,0.9);
-            padding: 2px 6px;
-            border-radius: 10px;
-            display: inline-block;
-        }
-
-        .fully-booked-slot {
-            background: linear-gradient(135deg, #FFCDD2, #F8BBD9);
-            color: #D32F2F;
-            font-weight: bold;
-            cursor: not-allowed;
-            opacity: 0.8;
-            position: relative;
-        }
-
-        .unavailable-slot {
-            background: #F5F5F5;
-            color: #999;
-        }
-
-        .legend {
-            display: flex;
-            justify-content: center;
-            gap: 30px;
-            margin-top: 25px;
-            flex-wrap: wrap;
-        }
-
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 15px;
-            border-radius: 20px;
-            background: white;
-            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
-        }
-
-        .legend-color {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            border: 2px solid #fff;
-        }
-
-        .legend-available { background: #A5D6A7; }
-        .legend-unavailable { background: #F5F5F5; }
-        .legend-booked { background: #FFCDD2; }
-
-        .instructions {
-            background: linear-gradient(135deg, #E8F4FD, #F0F8FF);
-            padding: 20px;
-            border-radius: 15px;
-            margin-bottom: 20px;
-            border-left: 5px solid #42A5F5;
-        }
-
-        .instructions h4 {
-            color: #1976D2;
-            margin-bottom: 10px;
-        }
-
-        .instructions ul {
-            color: #424242;
-            padding-left: 20px;
-        }
-
-        .instructions li {
-            margin-bottom: 5px;
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            z-index: 1000;
-        }
-
-        .modal-content {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: white;
-            padding: 30px;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            border: 3px solid #FF6B6B;
-            min-width: 300px;
-            max-width: 500px;
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-
-        .modal h3 {
-            color: #FF6B6B;
-            margin-bottom: 15px;
-            text-align: center;
-        }
-
-        .class-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-            gap: 10px;
-            margin: 15px 0;
-        }
-
-        .class-btn {
-            padding: 10px;
-            border: 2px solid #4ECDC4;
-            border-radius: 10px;
-            background: white;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-weight: bold;
-        }
-
-        .class-btn:hover {
-            background: #4ECDC4;
-            color: white;
-            transform: translateY(-2px);
-        }
-
-        .class-btn:disabled {
-            background: #f5f5f5;
-            color: #999;
-            cursor: not-allowed;
-            border-color: #ddd;
-        }
-
-        .error-message {
-            background: #ffebee;
-            color: #c62828;
-            padding: 15px;
-            border-radius: 10px;
-            margin: 15px 0;
-            border-left: 4px solid #c62828;
-        }
-
-        .success-message {
-            background: #e8f5e8;
-            color: #2e7d32;
-            padding: 15px;
-            border-radius: 10px;
-            margin: 15px 0;
-            border-left: 4px solid #2e7d32;
-        }
-
-        
